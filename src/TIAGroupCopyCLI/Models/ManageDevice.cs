@@ -30,452 +30,245 @@ using Siemens.Engineering.MC.Drives;
 
 using TiaOpennessHelper.Utils;
 using TIAHelper.Services;
+using System.Text.RegularExpressions;
+using TIAGroupCopyCLI.AppExceptions;
 
 namespace TIAGroupCopyCLI.Models
 {
 
-    public class PortAndPartnerPort
-    {
-        #region Fields
-        private readonly NetworkPort DevicePort;
-        private readonly List<NetworkPort> PartnerPorts = new List<NetworkPort>() ;
-        private bool isConnected;
-        #endregion Fileds
 
-        #region Constructor
-        public PortAndPartnerPort(NetworkPort devicePort)
-        {
-
-            DevicePort = devicePort;
-            if (DevicePort != null)
-            {
-                foreach (NetworkPort partnerPort in DevicePort.ConnectedPorts)
-                {
-                    PartnerPorts.Add( partnerPort);
-                    isConnected = true;
-                }
-            }
-        }
-        #endregion Constuctor
-
-        #region Methods
-        public void Save()
-        {
-            if (DevicePort != null)
-            {
-                foreach (NetworkPort partnerPort in DevicePort.ConnectedPorts)
-                {
-                    PartnerPorts.Add(partnerPort);
-                    isConnected = true;
-                }
-            }
-        }
-
-        public void Restore()
-        {
-            if ( (DevicePort != null) && isConnected)
-            {
-                foreach (NetworkPort partnerPort in PartnerPorts)
-                {
-                    try
-                    {
-                        DevicePort.ConnectToPort(partnerPort);
-                    }
-                    catch
-                    {
-                    }
-                }
-            }
-        }
-        #endregion Methods
-    }
-
-
-    class ManageDevice : IDevice
+    class ManageDevice
     {
 
+        #region References to openness object and managed objcts
+
+        public Device Device { get; set; }
+        public List<ManageNetworkInterface> NetworkInterfaces { get; set; }  = new List<ManageNetworkInterface>();
+
+        #endregion
+
         #region Fields
-        public List<Device> AllDevices { get; } = new List<Device>();
-
-        protected List<NetworkInterface> FirstPnNetworkInterfaces { get; } = new List<NetworkInterface>();
-               
-        protected List<AttributeInfo> PnDeviceNumberOfFirstPnNetworkInterfaces { get; set; } = new List<AttributeInfo>();
-
-        protected List<AttributeAndDeviceItem> FDestinationAddress_attribues { get; } = new List<AttributeAndDeviceItem>();
-
-
-        private readonly List<PortAndPartnerPort> NetworkPortsAndPartners = new List<PortAndPartnerPort>();
-        private readonly List<AttributeInfo> PnDeviceNameOfFirstPnNetworkInterfaces = new List<AttributeInfo>();
-        private readonly List<AttributeInfo> PnDeviceNameAutoGenOfFirstPnNetworkInterfaces  = new List<AttributeInfo>();
-
+        
+        protected readonly ManageAttributeGroup FDestinationAddress_attribues = new ManageAttributeGroup();
+        protected readonly string OriginalTiaDeviceName;
+        string TemplateTiaDeviceName;
 
         #endregion Fields
 
         #region constructors
-        /*
-        public ManageDevice()
+
+        public ManageDevice(Device device)
         {
-            //AllDevices = new List<Device>();
-
+            Device = device;
+            NetworkInterfaces = ManageNetworkInterface.GetAll_ManageNetworkInterfaceObjects(Device);
+            try
+            {
+                OriginalTiaDeviceName = Device.DeviceItems[1].Name;
+            }
+            catch { }
         }
-        */
-        public ManageDevice(Device aDevice)
-        {
-            AllDevices.Add(aDevice);
-            Get1PnInterfaces();
-            GetAllPortsAndPartners();
-            Save();
-
-        }
-        public ManageDevice(IList<Device> aDevices)
-        {
-            AllDevices.AddRange(aDevices);
-            Get1PnInterfaces();
-            GetAllPortsAndPartners();
-            Save();
-        }
-
-
         #endregion
 
         #region Methods
-        public virtual void Save()
+
+
+        public virtual void SaveConfig()
         {
-            foreach (Device currentDevice in AllDevices)
+            FDestinationAddress_attribues.FindAndSaveDeviceItemAtributes(Device, "Failsafe_FDestinationAddress");
+            foreach(ManageNetworkInterface currentItem in NetworkInterfaces)
             {
-                IList<AttributeAndDeviceItem> newAttributes = Service.GetValueAndDeviceItemsWithAttribute(currentDevice.DeviceItems, "Failsafe_FDestinationAddress");
-
-                if (newAttributes != null)
-                {
-                    FDestinationAddress_attribues.AddRange(newAttributes);
-                }
-
-            }
-
-        }
-
-        public virtual  void Restore()
-        {
-            foreach (AttributeAndDeviceItem item in FDestinationAddress_attribues)  //.Where(i => true)
-            {
-                //if (((ulong)item.Value >= aLower) && ((ulong)item.Value <= aUpper))
-                //{
-                    item.Restore();
-                //}
+                currentItem.SaveConfig();
             }
         }
 
-        public virtual void AdjustFDestinationAddress(ulong aFDestOffset, ulong aLower, ulong aUpper)
+        public void CopyFromTemplate(ManageDevice templateDevice)
         {
 
-            foreach (AttributeAndDeviceItem item in FDestinationAddress_attribues)  //.Where(i => true)
+            for (int i = 0; i < templateDevice.FDestinationAddress_attribues.Count; i++)
             {
-                if (((ulong)item.Value >= aLower) && ((ulong)item.Value <= aUpper))
-                {
-                    item.AddToValue(aFDestOffset);
-                }
+                FDestinationAddress_attribues[i].Value = templateDevice.FDestinationAddress_attribues[i].Value;
             }
 
-        }
-
-        public void Get1PnInterfaces()
-        {
-
-            foreach (Device currentDevice in AllDevices)
+            for (int i = 0; i < templateDevice.NetworkInterfaces.Count; i++)
             {
-                IList<DeviceItem> tempPnInterfacesDeviceItems = Service.GetDeviceItemsWithAttribute(currentDevice.DeviceItems, "InterfaceType", "Ethernet");
-                if (tempPnInterfacesDeviceItems != null)
-                {
-                    NetworkInterface tempPnInterface = tempPnInterfacesDeviceItems[0].GetService<NetworkInterface>();
-                    FirstPnNetworkInterfaces.Add(tempPnInterface);
+                NetworkInterfaces[i]?.CopyFromTemplate(templateDevice.NetworkInterfaces[i]);
 
-                    AttributeInfo tempPnDeviceNumber = null;
-                    AttributeInfo tempPnDeviceName = null;
-                    AttributeInfo tempPnDeviceNameAutoGen = null;
-
-                    if (tempPnInterface != null)
-                    {
-                        if (tempPnInterface.IoConnectors.Count > 0)
-                        {
-                            AttributeValue tempAttributeValue;
-
-                            tempAttributeValue = Service.GetAttribute(tempPnInterface.IoConnectors[0], "PnDeviceNumber");
-                            if (tempAttributeValue != null)
-                                tempPnDeviceNumber = new AttributeInfo()
-                                {
-                                    Name = "PnDeviceNumber",
-                                    Value = tempAttributeValue.Value
-                                };
-                            else tempPnDeviceNumber = null;
-                        }
-
-                        if (tempPnInterface.Nodes.Count > 0)
-                        {
-                            AttributeValue tempAttributeValue;
-
-                            tempAttributeValue = Service.GetAttribute(tempPnInterface.Nodes[0], "PnDeviceName");
-                            if (tempAttributeValue != null)
-                                tempPnDeviceName = new AttributeInfo()
-                                {
-                                    Name = "PnDeviceName",
-                                    Value = tempAttributeValue.Value
-                                };
-                            else tempPnDeviceName = null;
-
-                            tempAttributeValue = Service.GetAttribute(tempPnInterface.Nodes[0], "PnDeviceNameAutoGeneration");
-                            if (tempAttributeValue != null)
-                                tempPnDeviceNameAutoGen = new AttributeInfo()
-                                {
-                                    Name = "PnDeviceNameAutoGeneration",
-                                    Value = tempAttributeValue.Value
-                                };
-                            else tempPnDeviceNameAutoGen = null;
-
-                        }
-                    }
-
-                    PnDeviceNumberOfFirstPnNetworkInterfaces.Add(tempPnDeviceNumber);
-                    PnDeviceNameOfFirstPnNetworkInterfaces.Add(tempPnDeviceName);
-                    PnDeviceNameAutoGenOfFirstPnNetworkInterfaces.Add(tempPnDeviceNameAutoGen);
-                }
 
             }
         }
 
-        public void GetAllPortsAndPartners()
+        public virtual void RestoreConfig_WithAdjustments(ulong pnDeviceNumberOffset, ulong fSourceOffset, ulong fDestOffset, ulong lowerFDest, ulong upperFDest)
         {
-
-            foreach (NetworkInterface currentInterface in FirstPnNetworkInterfaces)
+            foreach (SingleAttribute currentItem in FDestinationAddress_attribues) 
             {
-                foreach(NetworkPort currentPort in currentInterface.Ports)
+                if (((ulong)currentItem.Value >= lowerFDest) && ((ulong)currentItem.Value <= upperFDest))
                 {
-
-                    NetworkPortsAndPartners.Add(new PortAndPartnerPort(currentPort));
-
+                    currentItem.RestoreWithOffset(fDestOffset);
                 }
             }
-        }
-
-        public void xGetAllPortsAndPartners()
-        {
-
-            foreach (Device currentDevice in AllDevices)
+            foreach (ManageNetworkInterface currentItem in NetworkInterfaces)
             {
-                IList<DeviceItem> tempPnInterfacesDeviceItems = Service.GetDeviceItemsWithAttribute(currentDevice.DeviceItems, "InterfaceType", "Ethernet");
-                if (tempPnInterfacesDeviceItems != null)
-                {
-
-                    foreach (DeviceItem currentPnInterfacesDeviceItems in tempPnInterfacesDeviceItems)
-                    {
-                        foreach (DeviceItem currentSubDeviceItems in currentPnInterfacesDeviceItems.DeviceItems)
-                        {
-                            try
-                            {
-
-                                NetworkPort tempPort = currentSubDeviceItems.GetService<NetworkPort>();
-                                if (tempPort != null)
-                                {
-                                    PortAndPartnerPort newPortAndPartnerPort = new PortAndPartnerPort(tempPort);
-
-                                    NetworkPortsAndPartners.Add(newPortAndPartnerPort);
-                                }
-                            }
-                            catch
-                            {
-                            }
-                        }
-                    }
-
-                }
-
-            }
-        }
-
-        public void RestoreAllPartnerPorts()
-        {
-            foreach (PortAndPartnerPort currentPortandPArtners in NetworkPortsAndPartners)
-            {
-                currentPortandPArtners.Restore();
-            }
-        }
-
-        public void ChangeNames(string aPrefix)
-        {
-
-            if (AllDevices != null)
-            {
-                //get PLCs in sub folders - recursive
-                foreach (Device device in AllDevices)
-                {
-                    try
-                    {
-                        device.DeviceItems[1].Name = aPrefix + device.DeviceItems[1].Name;
-                    }
-                    catch
-                    {
-                    }
-                }
-            }
-        }
-
-        public void ChangePnDeviceNames(string aPrefix)
-        {
-
-            if (AllDevices != null)
-            {
-                int i = 0;
-                foreach (NetworkInterface networkInterface in FirstPnNetworkInterfaces)
-                {
-                    
-                    if ((networkInterface.Nodes.Count > 0) && (PnDeviceNameAutoGenOfFirstPnNetworkInterfaces[i].Value != null))
-                    {
-                        if (PnDeviceNameAutoGenOfFirstPnNetworkInterfaces[i].Value is bool value)
-                            if (value == false)
-                            {
-                                //Service.SetAttribute(networkInterface.IoConnectors[0], PnDeviceNumberOfFirstPnNetworkInterfaces[i]);
-                                networkInterface.Nodes[0].SetAttribute(PnDeviceNameOfFirstPnNetworkInterfaces[i].Name, aPrefix + PnDeviceNameOfFirstPnNetworkInterfaces[i].Value);
-                            }
-                    }
-                    i++;
-                }
-                
-            }
-        }
-
-        public void ChangeIpAddresses(ulong aIpOffset)
-        {
-            foreach (NetworkInterface currentInterface in FirstPnNetworkInterfaces)
-            {
-                string[] tempIPaddress = ((string)currentInterface.Nodes[0].GetAttribute("Address")).Split('.');
-
-                currentInterface.Nodes[0].SetAttribute("Address", tempIPaddress[0] + "." + tempIPaddress[1] + "." + (Convert.ToInt32(tempIPaddress[2]) + (uint)aIpOffset) + "." + tempIPaddress[3]); //ip of PLC
-            }
-        }
-
-        public void XxSwitchIoSystem(Subnet aSubnet, IoSystem aIoSystem, ulong aIpOffset)
-        {
-
-            int i = 0;
-            foreach (NetworkInterface networkInterface in FirstPnNetworkInterfaces)
-            {
-                try
-                {
-                    networkInterface.Nodes[0].DisconnectFromSubnet();
-                }
-                catch
-                {
-                }
-                if (aSubnet != null)
-                {
-                    string[] tempIPaddress = ((string)networkInterface.Nodes[0].GetAttribute("Address")).Split('.');
-                    networkInterface.Nodes[0].SetAttribute("Address", tempIPaddress[0] + "." + tempIPaddress[1] + "." + (Convert.ToInt32(tempIPaddress[2]) + (uint)aIpOffset) + "." + tempIPaddress[3]); //ip of PLC
-                    networkInterface.Nodes[0].ConnectToSubnet(aSubnet);
-                    if (aIoSystem != null)
-                    {
-
-                        networkInterface.IoConnectors[0].ConnectToIoSystem(aIoSystem);
-                        if ( (networkInterface.IoConnectors.Count > 0) && (PnDeviceNumberOfFirstPnNetworkInterfaces[i].Value != null)  )
-                        {
-                            //PnDeviceNumberOfFirstPnNetworkInterfaces[i].AddToValue(10);
-                            //Service.SetAttribute(networkInterface.IoConnectors[0], PnDeviceNumberOfFirstPnNetworkInterfaces[i]);
-                            //var x = networkInterface.IoConnectors[0].GetAttribute("PnDeviceNumber");
-                            //networkInterface.IoConnectors[0].SetAttribute("PnDeviceNumber", 2);
-                            //networkInterface.IoConnectors[0].SetAttribute(PnDeviceNumberOfFirstPnNetworkInterfaces[i].Name, 4);
-
-                            //int tempDeviceNumber = PnDeviceNumberOfFirstPnNetworkInterfaces[i].GetValueAsInt();
-                            //networkInterface.IoConnectors[0].SetAttribute(PnDeviceNumberOfFirstPnNetworkInterfaces[i].Name, tempDeviceNumber);
-                            networkInterface.IoConnectors[0].SetAttribute(PnDeviceNumberOfFirstPnNetworkInterfaces[i].Name, PnDeviceNumberOfFirstPnNetworkInterfaces[i].Value);
-                            
-                        }
-                    }
-                }
-                i++;
+                currentItem.RestoreConfig_WithAdjustments(pnDeviceNumberOffset);
             }
         }
 
 
+        public virtual void StripGroupNumAndPrefix(string devicePrefix)
+        {
+            TemplateTiaDeviceName = "temp" + Regex.Replace(OriginalTiaDeviceName, "^" + devicePrefix + "\\d+", "", RegexOptions.IgnoreCase);
+            try
+            {
+                Device.DeviceItems[1].Name = TemplateTiaDeviceName;
+                if (Device.DeviceItems[1].Name != TemplateTiaDeviceName)
+                {
+                    throw new GroupCopyException($"Could not rename TIA object \"{OriginalTiaDeviceName}\" in selected template group to name \"{TemplateTiaDeviceName}\", probably because that name already exsits.");
+                }
+            }
+            catch (TIAGroupCopyCLI.AppExceptions.GroupCopyException e)
+            {
+                throw;
+            }
+            catch
+            {
+            }
+
+            if (NetworkInterfaces.Count > 0)
+                NetworkInterfaces[0].StripGroupNumAndPrefixFromPnDeviceName(devicePrefix);
+        }
+
+        public virtual void RestoreGroupNumAndPrefix()
+        {
+            if (OriginalTiaDeviceName.Length == 0)
+            {
+                throw new ProgrammingException($"Could not restore TIA object of template Group because the orignal name is blank \"{OriginalTiaDeviceName}\".");
+            }
+
+            try
+            {
+                Device.DeviceItems[1].Name = OriginalTiaDeviceName;
+                if (Device.DeviceItems[1].Name != OriginalTiaDeviceName)
+                {
+                    throw new GroupCopyException($"Could not restore TIA object name in selected template group from \"{TemplateTiaDeviceName}\"  to orignal name \"{OriginalTiaDeviceName}\".");
+                }
+            }
+            catch (TIAGroupCopyCLI.AppExceptions.GroupCopyException e)
+            {
+                throw;
+            }
+            catch (Exception e)
+            {
+            }
+            if (NetworkInterfaces.Count > 0)
+                NetworkInterfaces[0].RestoreGroupNumAndPrefixToPnDeviceName();
+        }
+
+        public virtual void ChangeGroupNumAndPrefix(string devicePrefix, string groupNumber)
+        {
+            if (groupNumber.Length == 0)
+            {
+                throw new ProgrammingException($"Could not change TIA Name of object because of invalid group number.");
+            }
+
+            try
+            {
+                string newName = Regex.Replace(Device.DeviceItems[1].Name, "^temp", devicePrefix + groupNumber);
+                if (newName.Length == 0)
+                {
+                    throw new GroupCopyException($"Could not change TIA Name of object.");
+                }
+                Device.DeviceItems[1].Name = newName;
+                if (Device.DeviceItems[1].Name != newName)
+                {
+                    throw new GroupCopyException($"Could not chnage TIA object name to \"{newName}\".");
+                }
+            }
+            catch (TIAGroupCopyCLI.AppExceptions.GroupCopyException e)
+            {
+                throw;
+            }
+            catch (Exception e)
+            {
+            }
+            if (NetworkInterfaces.Count > 0)
+                NetworkInterfaces[0].ChangeGroupNumAndPrefixToPnDeviceName(devicePrefix, groupNumber);
+
+        }
+
+        public void xAddPrefixToTiaName(string aPrefix)
+        {
+            try
+            {
+                Device.DeviceItems[1].Name = aPrefix + Device.DeviceItems[1].Name;
+            }
+            catch
+            {
+            }
+        }
+
+        public void xAddPrefixToPnDeviceName(string aPrefix)
+        {
+            if (NetworkInterfaces.Count > 0)
+                NetworkInterfaces[0].xAddPrefixToPnDeviceName(aPrefix);
+        }
+
+        public void AddOffsetToIpAddresse(ulong aIpOffset)
+        {
+            if (NetworkInterfaces.Count > 0)
+            {
+                    NetworkInterfaces[0].AddOffsetToIpAddress(aIpOffset);
+            }
+        }
+
+        public Subnet Get_Subnet()
+        {
+
+            if (NetworkInterfaces.Count > 0)
+            {
+                return  NetworkInterfaces[0].Get_Subnet();
+            }
+            return null;
+        }
+
+        public IoSystem Get_ioSystem()
+        {
+            if (NetworkInterfaces.Count > 0)
+            {
+                return NetworkInterfaces[0].Get_ioSystem();
+            }
+            return null;
+        }
+        public void Reconnect(Subnet subnet, IoSystem ioSystem)
+        {
+            if (NetworkInterfaces.Count > 0)
+            {
+                NetworkInterfaces[0].Reconnect(subnet, ioSystem);
+            }
+        }
         public void SwitchIoSystem(Subnet aSubnet, IoSystem aIoSystem)
         {
-
-            int i = 0;
-            foreach (NetworkInterface networkInterface in FirstPnNetworkInterfaces)
-            {
-                try
-                {
-                    networkInterface.Nodes[0].DisconnectFromSubnet();
-                }
-                catch
-                {
-                }
-                if (aSubnet != null)
-                {
-                    networkInterface.Nodes[0].ConnectToSubnet(aSubnet);
-                    if (aIoSystem != null)
-                    {
-                        if ((networkInterface.IoConnectors.Count > 0) )
-                        {
-                            networkInterface.IoConnectors[0].ConnectToIoSystem(aIoSystem);
-                            //Service.SetAttribute(networkInterface.IoConnectors[0], PnDeviceNumberOfFirstPnNetworkInterfaces[i]);
-                            if ( (PnDeviceNumberOfFirstPnNetworkInterfaces[i]?.Value ?? null) != null)
-                            {
-                                networkInterface.IoConnectors[0].SetAttribute(PnDeviceNumberOfFirstPnNetworkInterfaces[i].Name, PnDeviceNumberOfFirstPnNetworkInterfaces[i].Value);
-                            }
-                        }
-                    }
-                }
-                i++;
-            }
+            DisconnectFromSubnet();
+            ConnectToSubnet(aSubnet);
+            ConnectToIoSystem(aIoSystem);
         }
-
         public void DisconnectFromSubnet()
         {
-            foreach (NetworkInterface networkInterface in FirstPnNetworkInterfaces)
+            if (NetworkInterfaces.Count > 0)
             {
-                networkInterface.Nodes[0].DisconnectFromSubnet();
+                NetworkInterfaces[0].DisconnectFromSubnet();
             }
         }
-
         public void ConnectToSubnet(Subnet aSubnet)
         {
-            if (aSubnet != null)
+            if (NetworkInterfaces.Count > 0)
             {
-                foreach (NetworkInterface networkInterface in FirstPnNetworkInterfaces)
-                {
-                    networkInterface.Nodes[0].ConnectToSubnet(aSubnet);
-                }
+                NetworkInterfaces[0].ConnectToSubnet(aSubnet);
             }
         }
-
-        public void ConnectToSubnet(Subnet aSubnet, ulong aIpOffset)
-        {
-            if (aSubnet != null)
-            {
-                foreach (NetworkInterface networkInterface in FirstPnNetworkInterfaces)
-                {
-                    string[] tempIPaddress = ((string)networkInterface.Nodes[0].GetAttribute("Address")).Split('.');
-                    networkInterface.Nodes[0].SetAttribute("Address", tempIPaddress[0] + "." + tempIPaddress[1] + "." + (Convert.ToInt32(tempIPaddress[2]) + (uint)aIpOffset) + "." + tempIPaddress[3]); //ip of PLC
-
-                    networkInterface.Nodes[0].ConnectToSubnet(aSubnet);
-                }
-            }
-        }
-
         public void ConnectToIoSystem(IoSystem aIoSystem)
         {
-            if (aIoSystem != null)
+            if (NetworkInterfaces.Count > 0)
             {
-                int i = 0;
-                foreach (NetworkInterface networkInterface in FirstPnNetworkInterfaces)
-                {
-                    networkInterface.IoConnectors[0].ConnectToIoSystem(aIoSystem);
-                    if ((networkInterface.IoConnectors.Count > 0) && (PnDeviceNumberOfFirstPnNetworkInterfaces[i].Value != null))
-                    {
-                        //Service.SetAttribute(networkInterface.IoConnectors[0], PnDeviceNumberOfFirstPnNetworkInterfaces[i]);
-                        networkInterface.IoConnectors[0].SetAttribute(PnDeviceNumberOfFirstPnNetworkInterfaces[i].Name, PnDeviceNumberOfFirstPnNetworkInterfaces[i].Value);
-                    }
-                    i++;
-                }
-                
+                NetworkInterfaces[0].ConnectToIoSystem(aIoSystem);
             }
         }
 

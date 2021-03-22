@@ -49,119 +49,102 @@ namespace TIAGroupCopyCLI.Models
             Telegram = aTelegram;
             if (aTelegram != null)
             {
-                FDestinationAddr = Service.GetAttribute(aTelegram, "Failsafe_FDestinationAddress");
-                StartAddress = Service.GetAttributes(aTelegram.Addresses, "StartAddress");
+                FDestinationAddr = AttributeValue.GetAttribute(aTelegram, "Failsafe_FDestinationAddress");
+                StartAddress = AttributeValue.GetAttributes(aTelegram.Addresses, "StartAddress");
             }
         }
         #endregion Constructor
 
         #region Methods
-        public void SaveFDestAndIoAddresses()
-        {
-            if (Telegram != null)
-            {
-                FDestinationAddr = Service.GetAttribute(Telegram, "Failsafe_FDestinationAddress");
-                StartAddress = Service.GetAttributes(Telegram.Addresses, "StartAddress");
-            }
 
-        }
-
-        public new void AdjustFDestinationAddress(ulong aOffset, ulong aLower, ulong aUpper)
-        {
-            if (FDestinationAddr != null)
-            {
-
-                if (((uint)FDestinationAddr.Value >= aLower) && ((uint)FDestinationAddr.Value <= aUpper))
-                {
-                    FDestinationAddr.AddToValue(aOffset);
-                }
-
-            }
-        }
-        public void RestoreFDestAndIoAddresses()
+        public void RestoreConfig_WithAdjustments(ulong aOffset, ulong aLower, ulong aUpper)
         {
             if (Telegram != null)
             {
                 if (FDestinationAddr != null)
                 {
-                    Service.SetAttribute(Telegram, "Failsafe_FDestinationAddress", FDestinationAddr);
+
+                    if (((uint)FDestinationAddr.Value >= aLower) && ((uint)FDestinationAddr.Value <= aUpper))
+                    {
+                        FDestinationAddr.AddToValue(aOffset);
+                    }
+                    SingleAttribute.SetAttribute_Wrapper(Telegram, "Failsafe_FDestinationAddress", FDestinationAddr.Value);
                 }
+
                 int i = 0;
                 foreach (Address currentAddress in Telegram.Addresses)
                 {
-                    Service.SetAttribute(currentAddress, "StartAddress", StartAddress[i]);
+                    SingleAttribute.SetAttribute_Wrapper(currentAddress, "StartAddress", StartAddress[i].Value);
                     i++;
                 }
             }
 
         }
-        #endregion methods
+        #endregion
     }
 
-    class ManageDrive : ManageDevice
+    class ManageDrive : ManageDevice , IManageDevice
     {
         #region Fields
         private readonly List<TelegramAndAttributes> AllTelegrams = new List<TelegramAndAttributes>();
+        public DeviceType DeviceType { get; } = DeviceType.Drive;
+        private DriveObject driveObject;
         #endregion Fields
 
         #region Constructors 
         public ManageDrive(Device aDevice) : base(aDevice)
         {
-            //AllDevices.Add(aDevice);
-            Save();
+            driveObject = Get_DriveObject(aDevice);
         }
-        public ManageDrive(IList<Device> aDevices) : base( aDevices)
-        {
-            //AllDevices.AddRange(aDevices);
-            Save();
-        }
+
         #endregion Constructors
 
         #region Methods
-        public new void Save()
+        public new void SaveConfig()
         {
-            SaveFDestAndIoAddresses();
-        }
 
-        public new void Restore()
-        {
-            RestoreFDestAndIoAddresses();
-            base.Restore();
-        }
-
-        public void SaveFDestAndIoAddresses()
-        {
-            foreach(Device currentDrive in AllDevices)
+            foreach (Telegram currentTelegram in driveObject.Telegrams)
             {
-                DriveObject tempDrive = currentDrive.DeviceItems[1].GetService<DriveObjectContainer>().DriveObjects[0];
-                foreach (Telegram currentTelegram in tempDrive.Telegrams)
+                TelegramAndAttributes newTelegram = new TelegramAndAttributes(currentTelegram);
+                if (newTelegram != null)
                 {
-                    TelegramAndAttributes newTelegram = new TelegramAndAttributes(currentTelegram);
-                    if (newTelegram != null)
+                    AllTelegrams.Add(newTelegram);
+                }
+
+            }
+            base.SaveConfig();
+        }
+        
+        public new void RestoreConfig_WithAdjustments(ulong pnDeviceNumberOffset, ulong fSourceOffset, ulong fDestOffset, ulong lowerFDest, ulong upperFDest)
+        {
+            foreach (TelegramAndAttributes currentTelegram in AllTelegrams)
+            {
+                currentTelegram.RestoreConfig_WithAdjustments(fDestOffset, lowerFDest, upperFDest);
+            }
+
+            base.RestoreConfig_WithAdjustments(pnDeviceNumberOffset, fSourceOffset, fDestOffset, lowerFDest, upperFDest);
+        }
+
+        #endregion methods
+
+        #region static methods
+        public static DriveObject Get_DriveObject(Device device)
+        {
+            //PlcSoftware plcSoftware = null;
+            foreach (DeviceItem currentDeviceItem in device.DeviceItems)
+            {
+                DriveObjectContainer doContainer = currentDeviceItem.GetService<DriveObjectContainer>();
+                if (doContainer != null)
+                {
+                    if (doContainer.DriveObjects[0] is DriveObject drive)
                     {
-                        AllTelegrams.Add(newTelegram);
+                        return drive;
                     }
-                    
                 }
             }
+            return null;
         }
 
-        public void RestoreFDestAndIoAddresses()
-        {
-            foreach (TelegramAndAttributes currentTelegram in AllTelegrams)
-            {
-
-                currentTelegram.RestoreFDestAndIoAddresses();
-            }
-        }
-
-        public new void AdjustFDestinationAddress(ulong aOffset, ulong aLower, ulong aUpper)
-        {
-            foreach (TelegramAndAttributes currentTelegram in AllTelegrams)
-            {
-                currentTelegram.AdjustFDestinationAddress(aOffset, aLower, aUpper);
-            }
-        }
-        #endregion methods
+        #endregion
     }
 }

@@ -1,0 +1,6 @@
+
+"D:\Source\TiaGroupCopyCli\TIA_samples\Groups\Groups.ap15_1" Group_ sk 3 1 100 100
+
+"D:\Source\TiaGroupCopyCli\TIA_samples\EMS\EMS.ap15_1" "EMS_Controller " ems 3 1 100 100
+
+"D:\Source\TiaGroupCopyCli\TIA_samples\Skillets\Skillets.ap15_1" SKILLET sk 3 1 10 100

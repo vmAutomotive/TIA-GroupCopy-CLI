@@ -36,28 +36,34 @@ namespace TIAGroupCopyCLI.Models
 {
 
  
-    class ManageHmi : ManageDevice
+    class ManageHmi : ManageDevice , IManageDevice
     {
+
+        public DeviceType DeviceType { get; } = DeviceType.Hmi;
+        private HmiTarget hmiTarget;
 
         public ManageHmi(Device aDevice) : base(aDevice)
         {
-            Save();
+            hmiTarget = Get_HmiTarget(aDevice);
         }
-        public ManageHmi(IList<Device> aDevices) : base(aDevices)
+
+
+        public static HmiTarget Get_HmiTarget(Device device)
         {
-            Save();
+            //PlcSoftware plcSoftware = null;
+            foreach (DeviceItem currentDeviceItem in device.DeviceItems)
+            {
+                //hole Softwareblöcke, die PLC_1 untergeordnet sind
+                SoftwareContainer softwareContainer = currentDeviceItem.GetService<SoftwareContainer>();
+                if (softwareContainer != null)
+                {
+                    if (softwareContainer.Software is HmiTarget hmi)
+                    {
+                        return hmi;
+                    }
+                }
+            }
+            return null;
         }
-
-        public new void Save()
-        {
-            ;
-        }
-
-        public new void Restore()
-        {
-            ;
-        }
-
-
     }
 }

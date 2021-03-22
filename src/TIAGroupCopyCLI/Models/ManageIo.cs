@@ -35,61 +35,31 @@ using TIAHelper.Services;
 namespace TIAGroupCopyCLI.Models
 {
 
-    class ManageIo : ManageDevice
+    class ManageIo : ManageDevice , IManageDevice
     {
         #region Fields
-        List<AttributeAndAddress> AllStartAddresses = new List<AttributeAndAddress>();
+        public DeviceType DeviceType { get; } = DeviceType.ioDevice;
+
+        ManageAttributeGroup StartAddresses = new ManageAttributeGroup();
         #endregion Fileds
 
         #region  Constructor
-
         public ManageIo(Device aDevice) : base(aDevice)
         {
-            //AllDevices.Add(aDevice);
-            Save();
         }
-        public ManageIo(IList<Device> aDevices) : base(aDevices)
-        {
-            //AllDevices.AddRange(aDevices);
-            Save();
-        }
-
-        /*
-        public ManageIo(DeviceUserGroup aGroup)
-        {
-            //AllDevices.AddRange(aDevices);
-            IList<Device> devices = Service.GetAllDevicesInGroup(aGroup);
-            AllDevices = (List<Device>)devices;
-            Save();
-        }
-        */
         #endregion
 
         #region Methodes
-        public new  void Save()
+        public new  void SaveConfig()
         {
-            List<AttributeAndAddress> returnStartAddressAndAddressObjects = new List<AttributeAndAddress>();
-            IList<AttributeAndAddress> addStartAddressAndAddressObjects;
-
-            foreach (Device currentDevice in AllDevices)
-            {
-                addStartAddressAndAddressObjects =  (List<AttributeAndAddress>)Service.GetValueAndAddressWithAttribute(currentDevice.DeviceItems, "StartAddress");
-                returnStartAddressAndAddressObjects.AddRange(addStartAddressAndAddressObjects);
-            }
-            AllStartAddresses = returnStartAddressAndAddressObjects;
+            StartAddresses.FindAndSaveAddressAttributes(Device, "StartAddress");
+            base.SaveConfig();
         }
 
-        
-        public new void Restore()
+        public new void RestoreConfig_WithAdjustments(ulong pnDeviceNumberOffset, ulong fSourceOffset, ulong fDestOffset, ulong lowerFDest, ulong upperFDest)
         {
-            foreach (AttributeAndAddress currentAddress in AllStartAddresses)
-            {
-
-                currentAddress.RestoreValue();
-            }
-
-            base.Restore();
-
+            StartAddresses.Restore();
+            base.RestoreConfig_WithAdjustments(pnDeviceNumberOffset, fSourceOffset, fDestOffset, lowerFDest, upperFDest);
         }
 
         #endregion
