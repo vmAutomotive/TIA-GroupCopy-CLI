@@ -339,31 +339,38 @@ namespace TIAGroupCopyCLI.Para
 
             Messaging.Progress("");
             if (aArgs == null) return;
+            //if (aArgs.Count() < currentArgIdx + 1) return;
             Messaging.Progress("Command line arguments:");
             Messaging.Progress("");
             Messaging.Progress((currentArgIdx + 1) + ". ProjectPath           = " + aArgs[currentArgIdx]);
 
             currentArgIdx++;
+            if (aArgs.Count() < currentArgIdx + 1) return;
             if (aArgs.Length < currentArgIdx) return;
             Messaging.Progress((currentArgIdx + 1) + ". GroupName             = " + aArgs[currentArgIdx]);
 
             currentArgIdx++;
+            if (aArgs.Count() < currentArgIdx + 1) return;
             if (aArgs.Length < currentArgIdx) return;
             Messaging.Progress((currentArgIdx + 1) + ". DevicePrefix          = " + aArgs[currentArgIdx]);
 
             currentArgIdx++;
+            if (aArgs.Count() < currentArgIdx + 1) return;
             if (aArgs.Length < currentArgIdx) return;
             Messaging.Progress((currentArgIdx + 1) + ". NumberOfGroups        = " + aArgs[currentArgIdx]);
 
             currentArgIdx++;
+            if (aArgs.Count() < currentArgIdx + 1) return;
             if (aArgs.Length < currentArgIdx) return;
             Messaging.Progress((currentArgIdx + 1) + ". FBaseAddrOffset       = " + aArgs[currentArgIdx]);
 
             currentArgIdx++;
+            if (aArgs.Count() < currentArgIdx + 1) return;
             if (aArgs.Length < currentArgIdx) return;
             Messaging.Progress((currentArgIdx + 1) + ". FDestAddrOffset       = " + aArgs[currentArgIdx]);
 
             currentArgIdx++;
+            if (aArgs.Count() < currentArgIdx + 1) return;
             if (aArgs.Length < currentArgIdx) return;
             Messaging.Progress((currentArgIdx + 1) + ". IDeviceIoAddrOffset   = " + aArgs[currentArgIdx]);
 

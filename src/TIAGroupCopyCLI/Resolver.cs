@@ -10,6 +10,7 @@ using System.Diagnostics;
 
 using TIAGroupCopyCLI;
 using TIAGroupCopyCLI.MessagingFct;
+using TIAGroupCopyCLI.AppExceptions;
 
 namespace TiaOpennessHelper.Utils
 {
@@ -25,7 +26,7 @@ namespace TiaOpennessHelper.Utils
         private static string AssemblyPath = "";
 
 
-        public static bool SelectAssmebly(string projectVersion, string preferedTiaVersion, string preferedAssemblyVersion)
+        public static void SelectAssmebly(string projectVersion, string preferedTiaVersion, string preferedAssemblyVersion)
         {
 
             string selectedTiaVersion = "";
@@ -66,7 +67,7 @@ namespace TiaOpennessHelper.Utils
                 }
             }
 
-            if (AssemblyPath == "")
+            if (string.IsNullOrEmpty(AssemblyPath))
             {
                 if (File.Exists(INSTALL_PATH_PRE + projectV.Major + "_" + projectV.Minor + BIN_PATH_POST))
                 {
@@ -82,7 +83,7 @@ namespace TiaOpennessHelper.Utils
                         else
                         {
                             Messaging.Progress($"Openness dll version {projectVersion} not found (" + INSTALL_PATH_PRE + projectV.Major + "_" + projectV.Minor + API_PATH_SUBFOLDER + projectV.Major + "_" + projectV.Minor + API_PATH_POST + ")");
-                            return false;
+                            throw new HaendlerException();
                         }
                     }
                     else
@@ -95,27 +96,27 @@ namespace TiaOpennessHelper.Utils
                         else
                         {
                             Messaging.Progress($"Openness dll version {projectVersion} not found (" + INSTALL_PATH_PRE + projectV.Major + "_" + projectV.Minor + API_PATH_SUBFOLDER + preferedTiaV.Major + "." + preferedTiaV.Minor + API_PATH_POST + ")");
-                            return false;
+                            throw new HaendlerException();
                         }
                     }
                 }
                 else
                 {
                     Messaging.Progress($"TIA version {projectVersion} not found (" + INSTALL_PATH_PRE + projectV.Major + "_" + projectV.Minor + BIN_PATH_POST + ")");
-                    return false;
+                    throw new HaendlerException();
                 }
             }
 
 
-            if (AssemblyPath == "")
+            if (string.IsNullOrEmpty(AssemblyPath))
             {
                 Messaging.Progress("Could not find Openness DLL.");
-                return false;
+                throw new HaendlerException();
             }
             if (!File.Exists(AssemblyPath))
             {
                 Messaging.Progress("The following DLL does not exits: " + AssemblyPath);
-                return false;
+                throw new HaendlerException();
             }
 
 
@@ -140,7 +141,6 @@ namespace TiaOpennessHelper.Utils
                 Messaging.Progress($"Application will run with Openness version {selectedAssemblyVersion}");
             }
 
-            return true;
         }
 
         public static List<string> GetEngineeringVersions()
@@ -303,7 +303,9 @@ namespace TiaOpennessHelper.Utils
         {
             string exceptionStr = args.ExceptionObject.ToString();
             Exception e = (Exception)args.ExceptionObject;
-            Console.WriteLine("Ups -> Runtime terminating: {0}", args.IsTerminating);
+
+            Messaging.Progress("======================================================");
+            Console.WriteLine("Ups, something went wrong!!! -> Runtime terminating: {0}", args.IsTerminating);
 
             // Get stack trace for the exception with source file information
             var st = new StackTrace(e, true);
@@ -311,7 +313,8 @@ namespace TiaOpennessHelper.Utils
             var frame = st.GetFrame(0);
             // Get the line number from the stack frame
             var line = frame.GetFileLineNumber();
-
+            
+            
             //AppDomain.Unload(AppDomain.CurrentDomain);
         }
     }

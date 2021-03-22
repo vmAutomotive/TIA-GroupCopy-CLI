@@ -36,28 +36,24 @@ namespace TIAGroupCopyCLI //TIAGroupCopyCLI
 
         static void Main(string[] args)
         {
-            Heandlers.AddAppExceptionHaenlder();
-
-
-            //string assemblyVersion = Assembly.GetExecutingAssembly().GetName().Version.ToString();
-            string fileVersion = FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location).FileVersion;
-            //string productVersion = FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location).ProductVersion;
-            Messaging.Progress("TIA Group copy v" + fileVersion);
-            Messaging.Progress("This beta version is a customized solution for now");
-
-
-            Messaging.Progress("================================================================");
-
-
-
 
             try
             {
+                Heandlers.AddAppExceptionHaenlder();
+
+
+                //string assemblyVersion = Assembly.GetExecutingAssembly().GetName().Version.ToString();
+                string fileVersion = FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location).FileVersion;
+                //string productVersion = FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location).ProductVersion;
+                Messaging.Progress("TIA Group copy v" + fileVersion);
+                Messaging.Progress("This beta version is a customized solution for now");
+
+
+                Messaging.Progress("================================================================");
+
                 Parameters = new Parameters(args);
-                if (!Heandlers.SelectAssmebly(Parameters.ProjectVersion, TIAP_VERSION_USED_FOR_TESTING, OPENESS_VERSION_USED_FOR_TESTING))
-                {
-                    return;
-                }
+
+                Heandlers.SelectAssmebly(Parameters.ProjectVersion, TIAP_VERSION_USED_FOR_TESTING, OPENESS_VERSION_USED_FOR_TESTING);
                 Heandlers.AddAssemblyResolver();
 
                 GroupCopy();
@@ -72,10 +68,7 @@ namespace TIAGroupCopyCLI //TIAGroupCopyCLI
                 Messaging.FaultMessage(e.Message);
 
             }
-            finally
-            {
-                //tiaPortal.Dispose();
-            }
+
 
 
             Console.WriteLine("");
