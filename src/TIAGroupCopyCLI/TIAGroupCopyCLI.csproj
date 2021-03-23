@@ -81,7 +81,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="Siemens.Engineering">
-      <HintPath>..\..\..\..\Program Files\Siemens\Automation\Portal V15_1\PublicAPI\V15.1\Siemens.Engineering.dll</HintPath>
+      <HintPath>..\..\..\..\Program Files\Siemens\Automation\Portal V16\PublicAPI\V16\Siemens.Engineering.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="System" />

@@ -25,8 +25,8 @@ namespace TIAGroupCopyCLI //TIAGroupCopyCLI
     class Program
     {
         #region Fileds
-        const string TIAP_VERSION_USED_FOR_TESTING = "15.1";
-        const string OPENESS_VERSION_USED_FOR_TESTING = "15.1.0.0";
+        const string TIAP_VERSION_USED_FOR_TESTING = "16.0";
+        const string OPENESS_VERSION_USED_FOR_TESTING = "16.0.0.0";
 
         static Parameters Parameters;
 
