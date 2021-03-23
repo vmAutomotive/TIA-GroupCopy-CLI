@@ -6,3 +6,5 @@
 "D:\Source\TiaGroupCopyCli\TIA_samples\Skillets\Skillets.ap15_1" SKILLET sk 3 1 10 100
 
 "C:\Projects\TIA-GroupCopy-CLI\TIA_samples\Groups\Groups.ap15_1" Group_ sk 03 1 100 100
+
+"C:\Projects\TIA-GroupCopy-CLI\TIA_samples\Groups_V16\Groups_V16.ap16" Group_ sk 03 1 100 100

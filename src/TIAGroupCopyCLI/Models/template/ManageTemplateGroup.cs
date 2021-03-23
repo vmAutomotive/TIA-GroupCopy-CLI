@@ -48,7 +48,7 @@ namespace TIAGroupCopyCLI.Models.template
             _templateGroup = new ManageGroup(tiaTemplateGroup);
             if (_templateGroup.Devices.Where(d => d.DeviceType == DeviceType.Plc).Count() != 1)
             {
-                throw new GroupCopyException("No PLC or more than 1 PLC in group.");
+                throw new GroupCopyException("No PLC or more than 1 PLC found in group.");
             }
 
             Messaging.Progress("Preparing template group.");
@@ -78,7 +78,7 @@ namespace TIAGroupCopyCLI.Models.template
                 FoundGroups = GetGroupNames(project.DeviceGroups, groupNamePrefix);
                 if (GroupExists(1))
                 {
-                    throw new GroupCopyException("Could not create master copy.");
+                    throw new GroupCopyException("Could not rename template group to group 1 because group 1 already exisits.");
                 }
                 else
                 {
@@ -91,8 +91,9 @@ namespace TIAGroupCopyCLI.Models.template
 
 
         }
+        #endregion Constructor
 
-         public void DeleteMasterCopy()
+        public void DeleteMasterCopy()
         {
             try
             {
@@ -105,8 +106,7 @@ namespace TIAGroupCopyCLI.Models.template
             }
 
         }
-
-        #endregion Constructor
+   
 
         public bool GroupExists(uint groupNumber)
         {
@@ -116,8 +116,7 @@ namespace TIAGroupCopyCLI.Models.template
         public ManageGroup CreateNewGroup()
         {
 
-            ManageGroup newGroup = null;
-
+            ManageGroup newGroup;
             try
             {
                 DeviceUserGroup newTiaGroup = tiaUserGroups.CreateFrom(templateMasterCopy);

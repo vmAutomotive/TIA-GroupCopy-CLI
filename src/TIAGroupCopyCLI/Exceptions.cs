@@ -38,6 +38,8 @@ namespace TIAGroupCopyCLI.AppExceptions
     {
         public GroupCopyException() : base() { }
         public GroupCopyException(string message) : base(message) { }
+
+        public GroupCopyException(Exception inner) : base("", inner) { }
         public GroupCopyException(string message, Exception inner) : base(message, inner) { }
 
         // A constructor is needed for serialization when an

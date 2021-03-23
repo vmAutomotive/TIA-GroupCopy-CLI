@@ -59,13 +59,17 @@ namespace TIAGroupCopyCLI //TIAGroupCopyCLI
                 GroupCopy();
 
             }
-            catch (TIAGroupCopyCLI.AppExceptions.ParameterException)
+            catch (TIAGroupCopyCLI.AppExceptions.HaendlerException e)
             {
-
+                Messaging.FaultMessage(e.Message, e.InnerException);
+            }
+            catch (TIAGroupCopyCLI.AppExceptions.ParameterException e)
+            {
+                Messaging.FaultMessage(e.Message, e.InnerException);
             }
             catch (TIAGroupCopyCLI.AppExceptions.GroupCopyException e)
             {
-                Messaging.FaultMessage(e.Message);
+                Messaging.FaultMessage(e.Message, e.InnerException);
 
             }
 
